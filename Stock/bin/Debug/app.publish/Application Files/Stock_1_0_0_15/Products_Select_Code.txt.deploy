@@ -1,0 +1,88 @@
+﻿SELECT p.id as 'المعرف', p.name as 'إسم المنتج',c.name as 'إسم الصنف', p.description as 'الوصف', 
+if(un.small_unit = '', CONCAT_WS(un.unit_name, CONVERT(p.qty, VARCHAR(10)), ' '), 
+CONCAT_WS(un.unit_name, CONVERT(CONVERT(p.qty / un.total_qty, INTEGER), VARCHAR(10)) , CONCAT_WS(un.small_unit , CONVERT(p.qty % un.total_qty, VARCHAR(10)), ''))) as 'الكمية',
+if(p.active = 1, 'مفعل', 'غير مفعل') as 'الحالة', u.full_name as 'اسم المستخدم', 
+units.unit_name as 'وحدة القياس', p.created_at as 'تاريخ الاضافة'
+FROM products p 
+JOIN users u on u.id = p.user_id 
+JOIN units un on un.id = p.unit_id 
+JOIN categories c ON c.id = p.cat_id  
+JOIN units on units.id = p.unit_id ORDER BY p.id DESC
+
+
+
+
+
+
+
+
+SELECT p.id,
+	CONVERT(
+        if(u.small_unit = '',  SUM(od.qty) - if(re_od.qty IS NULL, 0, SUM(re_od.qty)),
+       		(SUM(od.qty) * u.total_qty + SUM(od.min_qty) ) -
+            if(SUM(re_od.qty) IS NULL, 0 + if(re_od.min_qty IS NULL, 0, SUM(re_od.min_qty)), 
+            SUM(re_od.qty) + if(re_od.min_qty IS NULL, 0, SUM(re_od.min_qty)))
+        ) , DECIMAL(9,2)) AS qty
+    
+FROM 
+    orders o
+       
+JOIN order_details od on od.or_id = o.id
+left JOIN re_orders re_o on re_o.or_id = o.id
+left JOIN re_order_details re_od on re_od.re_or_id = re_o.id
+JOIN products p on p.id = od.p_id
+JOIN categories c on c.id = p.cat_id
+JOIN units u on u.id = p.unit_id
+
+GROUP By
+	p.id
+
+
+
+
+
+
+
+
+
+	SELECT p.id,
+	CONVERT(
+        if(u.small_unit = '',  SUM(od.qty) - if(re_od.qty IS NULL, 0, SUM(re_od.qty)),
+       		(SUM(od.qty) * u.total_qty + SUM(od.min_qty) ) -
+            if(SUM(re_od.qty) IS NULL, 0 + if(re_od.min_qty IS NULL, 0, SUM(re_od.min_qty)), 
+            SUM(re_od.qty) + if(re_od.min_qty IS NULL, 0, SUM(re_od.min_qty)))
+        ) , DECIMAL(9,2)) AS out_qty,
+    CONVERT(
+        if(u.small_unit = '',  SUM(od.qty) - if(re_od.qty IS NULL, 0, SUM(re_od.qty)),
+       		(SUM(rd.qty) * u.total_qty + SUM(rd.min_qty) ) -
+            if(SUM(re_rd.qty) IS NULL, 0 + if(re_rd.min_qty IS NULL, 0, SUM(re_rd.min_qty)), 
+            SUM(re_rd.qty) + if(re_rd.min_qty IS NULL, 0, SUM(re_rd.min_qty)))
+        ) , DECIMAL(9,2)) AS in_qty,
+     CONVERT(
+        if(u.small_unit = '',  SUM(eog_d.qty),
+       		SUM(eog_d.qty) * u.total_qty + SUM(eog_d.min_qty)
+        ) , DECIMAL(9,2)) AS lose_qty
+    
+FROM 
+    products p
+       
+JOIN order_details od on od.p_id = p.id
+JOIN orders o on o.id = od.or_id
+
+JOIN request_details rd on rd.p_id = p.id
+JOIN requests r on r.id = rd.re_id
+
+JOIN eog_details eog_d on eog_d.p_id = p.id
+JOIN eog on eog.id = eog_d.eog_id
+
+left JOIN re_orders re_o on re_o.or_id = o.id
+left JOIN re_order_details re_od on re_od.re_or_id = re_o.id
+
+left JOIN re_requests re_r on re_r.re_id = r.id
+left JOIN re_request_details re_rd on re_rd.re_re_id = re_r.id
+
+JOIN categories c on c.id = p.cat_id
+JOIN units u on u.id = p.unit_id
+
+GROUP By
+	p.id
